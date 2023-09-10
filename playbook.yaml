@@ -1,0 +1,106 @@
+---
+- hosts: all
+  become: yes
+
+  tasks:
+
+    - name: Include env variables
+      include_vars: env.yaml
+    
+    - name: Set environment variables as Ansible variables
+      set_fact:
+        atuin_username: "{{ lookup('env', 'ATUIN_USERNAME') }}"
+        key: "{{ lookup('env', 'KEY') }}"
+        password: "{{ lookup('env', 'PASSWORD') }}"
+
+    - name: Install Rust
+      become: yes
+      dnf:
+        name: rust
+        state: present
+      environment:
+        RUSTUP_HOME: "{{ ansible_env.HOME }}/.rustup"
+      when: ansible_os_family == 'RedHat'
+
+    - name: Install Cargo
+      become: yes
+      dnf:
+        name: cargo
+        state: present
+      environment:
+        CARGO_HOME: "{{ ansible_env.HOME }}/.cargo"
+      when: ansible_os_family == 'RedHat'
+
+    - name: Update APT package cache on Debian/Ubuntu
+      become: yes
+      apt:
+        update_cache: yes
+      when: ansible_os_family == 'Debian'
+
+    - name: Install Rust on Debian/Ubuntu
+      become: yes
+      apt:
+        name: rustc
+        state: present
+      environment:
+        RUSTUP_HOME: "{{ ansible_env.HOME }}/.rustup"
+      when: ansible_os_family == 'Debian'
+
+    - name: Install Cargo on Debian/Ubuntu
+      become: yes
+      apt:
+        name: cargo
+        state: present
+      environment:
+        CARGO_HOME: "{{ ansible_env.HOME }}/.cargo"
+      when: ansible_os_family == 'Debian'
+
+    # Script recommended via https://www.rust-lang.org/tools/install
+    - name: Download and install Rust
+      ansible.builtin.shell: 
+        cmd: "curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y"
+        creates: "/root/.cargo/bin/rustc"
+
+    - name: Install atuin using Cargo
+      environment:
+        PATH: "{{ ansible_env.HOME }}/.cargo/bin:{{ ansible_env.PATH }}"
+      command: cargo install atuin
+
+    - name: Add Cargo bin directory to PATH in bashrc
+      lineinfile:
+        dest: "~/.bashrc"
+        line: 'export PATH="$PATH:$HOME/.cargo/bin"'
+        create: yes
+      when: lookup('env', 'SHELL') == 'bash'
+
+    - name: Add Cargo bin directory to PATH in zshrc
+      lineinfile:
+        dest: "~/.zshrc"
+        line: 'export PATH="$PATH:$HOME/.cargo/bin"'
+        create: yes
+      when: lookup('env', 'SHELL') == 'zsh'
+
+    - name: Download bash-preexec.sh
+      get_url:
+        url: "https://raw.githubusercontent.com/rcaloras/bash-preexec/master/bash-preexec.sh"
+        dest: "~/.bash-preexec.sh"
+        mode: '0755'
+      when: lookup('env', 'SHELL') == 'bash'
+
+    - name: Add bash-preexec.sh source line to bashrc
+      lineinfile:
+        dest: "~/.bashrc"
+        line: '[[ -f ~/.bash-preexec.sh ]] && source ~/.bash-preexec.sh'
+        create: yes  # Create the file if it doesn't exist
+      when: lookup('env', 'SHELL') == 'bash'
+    
+    - name: Add Atuin initialization to shell rc file
+      environment:
+        SHELL: "{{ lookup('env', 'SHELL') }}"  
+      lineinfile:
+        dest: "~/.{{ SHELL }}rc"
+        line: 'eval "$(atuin init {{ SHELL }})"'
+      when: SHELL is defined
+
+    - name: Log in to Atuin
+      command: "{{ ansible_env.HOME }}/.cargo/bin/atuin login --username '{{ ATUIN_USERNAME }}' --key '{{ KEY }}' --password '{{ PASSWORD }}'"
