@@ -1,19 +1,43 @@
-# Deploying-Atuin-Ansible
-Get atuin on all the devices you use :)
+# Deploying Atuin with Ansible
 
-# Set env.yaml variables
-Add your Username, Key and Password, along with your preferred SHELL.
+Use Ansible to easily deploy Atuin on all your devices.
 
-# Running the playbook
-Replace USERNAME with your username
-`ansible-playbook playbook.yaml -u USERNAME -i inventory.yaml`
+## Prerequisites
+
+Ensure you have both Ansible and Atuin installed on your system.
+
+## Configuration
+
+1. **Set Environment Variables**:  
+   Edit the `env.yaml` file to include your details:
+   - `Username`
+   - `Key`
+   - `Password`
+   - Preferred `SHELL`
+
+2. **Inventory Setup**:  
+   Make sure your devices are listed in the `inventory.yaml` file.
+
+## Deployment
+
+To run the playbook, use the following command:
+
+```bash
+ansible-playbook playbook.yaml -u YOUR_USERNAME -i inventory.yaml
+```
+
+Replace YOUR_USERNAME with your actual username.
 
 
-# Issues
-- Currently hitting an issue where it can't decrypt your database.
-  ```
+## Known Issues
+
+Decryption Problem:
+
+When trying to sync, you may encounter this error.
+  ```bash
   atuin sync      
   0/0 up/down to record store
   thread 'main' panicked at 'failed to decrypt history! check your key: could not encrypt
   ```
-  Issue tracked here -> https://github.com/atuinsh/atuin/issues/1199
+
+This issue is being tracked at atuinsh/atuin#1199.
